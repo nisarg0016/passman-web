@@ -100,7 +100,7 @@ def get_user_by_username(username):
         user = session.query(User).filter_by(username=username).first()
         return user, 200
     except SQLAlchemyError:
-        return {"error": "SQLAlchemy while getting user"}, 401
+        return {"error": "SQLAlchemyError while getting user"}, 401
         traceback.print_exc()
     finally:
         session.close()
@@ -109,13 +109,15 @@ def get_vault_entries_for_user(user_id):
     """Get all vault entries for user by user ID"""
     session = SessionLocal()
     try:
-        entries = session.query(VaultEntry).filter_by(user_id=user_id).all()
-        return entries
+        user = session.query(User.id).filter_by(username=user_id).first()
+        entries = session.query(VaultEntry).filter_by(user_id=user.id).all()
+        for i in entries:
+            print(i.site_username)
     except ProgrammingError:
-        print("Table not found. Make sure to run create_tables() first.")
         traceback.print_exc()
+        return {"error": "ProgrammingError while getting user/entries"}, 401
     except SQLAlchemyError:
-        print("Error fetching vault entries:")
         traceback.print_exc()
+        return {"error": "SQLAlchemyError while getting user/entries"}, 401
     finally:
         session.close()

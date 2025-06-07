@@ -5,3 +5,4 @@ pyenv.cfg
 /app/__pycache__
 /app/models/__pycache__
 /app/try.py
+.env

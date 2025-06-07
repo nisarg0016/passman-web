@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, request
+from flask import Flask, request, jsonify
 import sqlInterface as sql
 
 app = Flask(__name__)
@@ -46,13 +46,24 @@ def login():
     data = request.json
     username = data.get('username')
     password = data.get('password')
-
-    if not username or not password:
+    auth = request.headers.get("Authorization")
+    jwt = None
+    if not auth or not auth.startswith("Bearer "):
+        jwt = None
+    else:
+        jwt = auth.split(" ")[1]
+    if not username or (not password and not jwt):
         return jsonify({"error": "Username and password required"}), 400
+
+    if jwt and sql.decode_token(jwt) == username:
+        return jsonify({"message": "Login successful"}), 200
 
     return_req, code = sql.login(username, password)
     if code == 200:
-        return jsonify({"message": return_req["message"]}), code
+        if (sql.isOTP(username)):
+            return jsonify({"message": return_req["message"], "two_fa": sql.isOTP(username)}), code
+        else:
+            return jsonify({"message": return_req["message"], "token": sql.generate_token(username)}), code
     else:
         return jsonify({"error": return_req["error"]}), code
 
@@ -68,9 +79,28 @@ def loginotp():
         return jsonify({"error": "Username and password required"}), 400
 
     if sql.login_w_otp(username, password, otp):
-        return jsonify({"message": "Login successful"}), 200
+        return jsonify({"message": "Login successful", "token": sql.generate_token(username)}), 200
     else:
         return jsonify({"error": "Username or password incorrect"}), 400
+
+@app.route('/api/vault', methods=['POST'])
+def vaultFetch():
+    """API endpoint for fetching vault entries"""
+    data = request.json
+    username = data.get('username')
+    auth = request.headers.get("Authorization")
+    jwt = None
+    if not auth or not auth.startswith("Bearer "):
+        jwt = None
+    else:
+        jwt = auth.split(" ")[1]
+    if not username or not jwt:
+        return jsonify({"error": "Authentication error"}), 400
+
+    ret, code = sql.find_entries(username, jwt)
+    if code != 200:
+        return jsonify({"error": "Authentication error"}), 400
+    return jsonify({"message": "Login successful"}), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
