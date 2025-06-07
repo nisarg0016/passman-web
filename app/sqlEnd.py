@@ -7,7 +7,9 @@ from passlib.hash import bcrypt
 from models import User, VaultEntry
 from models.base import Base
 
-DATABASE_URL = "postgresql://postgres:cloak@172.31.144.1:5432/passman"
+import os
+
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_engine(DATABASE_URL, echo = True)
 SessionLocal = sessionmaker(bind=engine)
