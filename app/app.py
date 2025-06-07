@@ -1,6 +1,5 @@
-from flask import Flask, request, jsonify
-import sql
-import sqlLogin
+from flask import Flask, request, jsonify, request
+import sqlInterface as sql
 
 app = Flask(__name__)
 
@@ -19,7 +18,7 @@ def register():
     if not username or not password:
         return jsonify({"error": "Username and password required"}), 400
 
-    return_req, code = sqlLogin.add_user(username, password)
+    return_req, code = sql.register(username, password)
     if (code == 401):
         return jsonify({"error": return_req["error"]}), code
     return jsonify({"message": return_req["message"]}), code
@@ -51,10 +50,11 @@ def login():
     if not username or not password:
         return jsonify({"error": "Username and password required"}), 400
 
-    if sql.login(username, password) == 2:
-        return jsonify({"message": "Login successful"}), 200
+    return_req, code = sql.login(username, password)
+    if code == 200:
+        return jsonify({"message": return_req["message"]}), code
     else:
-        return jsonify({"error": "Username and password error"}), 400
+        return jsonify({"error": return_req["error"]}), code
 
 @app.route('/api/loginotp', methods=['POST'])
 def loginotp():
@@ -70,9 +70,7 @@ def loginotp():
     if sql.login_w_otp(username, password, otp):
         return jsonify({"message": "Login successful"}), 200
     else:
-        return jsonify({"error": "Username and password error"}), 400
+        return jsonify({"error": "Username or password incorrect"}), 400
 
 if __name__ == '__main__':
-    app.run(debug=True)
-if __name__ == "__main__":
     app.run(debug=True)

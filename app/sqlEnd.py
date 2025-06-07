@@ -16,10 +16,11 @@ def create_tables():
     """Initiator, creates tables"""
     try:
         Base.metadata.create_all(engine)
-        print("Tables created.")
+        return {"message": f"User {username} added successfully"}, 200
     except SQLAlchemyError:
         print("Error creating tables:")
         traceback.print_exc()
+        return {"error": "SQLAlchemyError while creating tables"}, 401
 
 def add_user(username, password_hash, totp_secret=None):
     """Add a user to the master user table"""
@@ -38,7 +39,7 @@ def add_user(username, password_hash, totp_secret=None):
             return_req, code = ({"message": f"User {username} added successfully"}, 200)
     except SQLAlchemyError:
         session.rollback()
-        return_req, code = ({"error": "SQLAlchemyError adding user"}, 401)
+        return_req, code = ({"error": "SQLAlchemyError while adding user"}, 401)
         traceback.print_exc()
     finally:
         session.close()
@@ -54,17 +55,14 @@ def edit_user(username, password, totp):
         if user_x:
             if bcrypt.verify(password, user_x.password_hash):
                 user_x.password_hash = bcrypt.hash(password)
-                print(totp)
                 user_x.totp_secret = totp
                 session.flush()
                 session.commit()
-                print("DONE")
                 return_req, code = ({"message": f"User {username} modified successfully"}, 200)
             else:
                 return_req, code = ({"error": f"User {username} access denied"}, 400)
     except SQLAlchemyError:
         session.rollback()
-        print("error")
         return_req, code = ({"error": "SQLAlchemyError while editing user"}, 401)
         traceback.print_exc()
     finally:
@@ -100,9 +98,9 @@ def get_user_by_username(username):
     session = SessionLocal()
     try:
         user = session.query(User).filter_by(username=username).first()
-        return user
+        return user, 200
     except SQLAlchemyError:
-        print("Error fetching user:")
+        return {"error": "SQLAlchemy while getting user"}, 401
         traceback.print_exc()
     finally:
         session.close()
