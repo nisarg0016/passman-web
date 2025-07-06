@@ -1,5 +1,5 @@
 import traceback
-
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError, ProgrammingError
@@ -9,16 +9,16 @@ from models.base import Base
 
 import os
 
+load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
-
-engine = create_engine(DATABASE_URL, echo = True)
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 
 def create_tables():
     """Initiator, creates tables"""
     try:
         Base.metadata.create_all(engine)
-        return {"message": f"User {username} added successfully"}, 200
+        return {"message": f"Tables added successfully"}, 200
     except SQLAlchemyError:
         print("Error creating tables:")
         traceback.print_exc()
@@ -71,30 +71,6 @@ def edit_user(username, password, totp):
         session.close()
     return return_req, code
 
-def add_vault_entry(user_id, site, site_username, password_encrypted, notes=None):
-    """Add a vault entry"""
-    session = SessionLocal()
-    try:
-        entry = VaultEntry(
-            user_id=user_id,
-            site=site,
-            site_username=site_username,
-            password_encrypted=password_encrypted,
-            notes=notes
-        )
-        session.add(entry)
-        session.commit()
-        print(f"Vault entry added for site: {site}")
-    except ProgrammingError:
-        print("Table not found. Did you create the tables?")
-        traceback.print_exc()
-    except SQLAlchemyError:
-        session.rollback()
-        print("Error adding vault entry:")
-        traceback.print_exc()
-    finally:
-        session.close()
-
 def get_user_by_username(username):
     """Fetch user object according to the username"""
     session = SessionLocal()
@@ -114,7 +90,8 @@ def get_vault_entries_for_user(user_id):
         user = session.query(User.id).filter_by(username=user_id).first()
         entries = session.query(VaultEntry).filter_by(user_id=user.id).all()
         for i in entries:
-            print(i.site_username)
+            print(i)
+        return entries, 200
     except ProgrammingError:
         traceback.print_exc()
         return {"error": "ProgrammingError while getting user/entries"}, 401
@@ -123,3 +100,34 @@ def get_vault_entries_for_user(user_id):
         return {"error": "SQLAlchemyError while getting user/entries"}, 401
     finally:
         session.close()
+
+def add_vault_entry(user_id, title, site, site_username, password_encrypted, notes=None, category=None, favorite=False):
+    """Add a vault entry"""
+    session = SessionLocal()
+    try:
+        entry = VaultEntry(
+            user_id=user_id,
+            title=title,
+            site=site,
+            site_username=site_username,
+            password_encrypted=password_encrypted,
+            notes=notes,
+            category=category,
+            favourite=1 if favorite else 0
+        )
+        session.add(entry)
+        session.commit()
+        print(f"Vault entry added for site: {site}")
+    except ProgrammingError:
+        print("Table not found. Did you create the tables?")
+        traceback.print_exc()
+    except SQLAlchemyError:
+        session.rollback()
+        print("Error adding vault entry:")
+        traceback.print_exc()
+    finally:
+        session.close()
+
+if __name__ == "__main__":
+    # This block is for testing purposes
+    create_tables()

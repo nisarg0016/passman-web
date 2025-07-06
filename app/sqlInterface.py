@@ -1,3 +1,4 @@
+from dotenv import load_dotenv
 import sqlEnd
 import pyotp
 import qrcode
@@ -8,6 +9,7 @@ from datetime import datetime, timedelta
 from passlib.hash import bcrypt
 import os
 
+load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 def isUser(username):
@@ -76,7 +78,8 @@ def login_w_otp(username, password, totp):
     otp = pyotp.TOTP(user.totp_secret)
     if not otp.verify(totp, valid_window = 1):
         return {"error": "OTP invalid"}, 400
-    return {"message": "Login successful"}, 200
+    else:
+        return {"message": "Login successful"}, 200
 
 def two_fa(username, password):
     if not isUser(username):
@@ -103,5 +106,24 @@ def find_entries(username, jwt):
     """Return entries under username in Vault"""
     if decode_token(jwt) != username:
         return {"error": "Authentication error"}, 400
-    sqlEnd.get_vault_entries_for_user(username)
-    return {"message": "Successful"}, 200
+    ret, code = sqlEnd.get_vault_entries_for_user(username)
+    if code != 200:
+        return ret, code
+    
+    # Convert SQLAlchemy objects to dictionaries for JSON serialization
+    entries_list = []
+    for entry in ret:
+        entry_dict = {
+            "id": entry.id,
+            "title": entry.title,
+            "site": entry.site,
+            "site_username": entry.site_username,
+            "password_encrypted": entry.password_encrypted,
+            "notes": entry.notes,
+            "category": entry.category,
+            "favourite": entry.favourite,
+            "created_at": entry.created_at.isoformat() if entry.created_at else None
+        }
+        entries_list.append(entry_dict)
+    
+    return entries_list, 200
